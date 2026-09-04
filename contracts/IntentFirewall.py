@@ -68,21 +68,21 @@ class IntentFirewall(gl.Contract):
     def __init__(self) -> None:
         pass
 
-    def _require_new(self, existing: str, identifier: str) -> None:
-        if identifier == "" or existing != "":
-            raise gl.UserError(f"{ERROR_EXPECTED} invalid or duplicate identifier")
-
     @gl.public.write
     def register_intent(self, intent_id: str, statement: str, forbidden_actions: str, risk_limit: u256, expires_at: u256) -> None:
-        self._require_new(self.intents[intent_id].intent_id, intent_id)
+        if intent_id == "" or intent_id in self.intents:
+            raise gl.UserError(f"{ERROR_EXPECTED} invalid or duplicate intent")
         if statement == "" or risk_limit > 100 or expires_at <= gl.block.timestamp:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid intent policy")
         self.intents[intent_id] = Intent(intent_id, gl.message.sender_account, statement, forbidden_actions, risk_limit, expires_at, True)
 
     @gl.public.write
     def open_session(self, session_id: str, intent_id: str, agent: Address, expires_at: u256) -> None:
+        if session_id == "" or session_id in self.sessions:
+            raise gl.UserError(f"{ERROR_EXPECTED} invalid or duplicate session")
+        if intent_id not in self.intents:
+            raise gl.UserError(f"{ERROR_EXPECTED} unknown intent")
         intent = self.intents[intent_id]
-        self._require_new(self.sessions[session_id].session_id, session_id)
         if intent.intent_id == "" or not intent.active or gl.message.sender_account != intent.owner:
             raise gl.UserError(f"{ERROR_EXPECTED} unauthorized intent owner")
         if expires_at <= gl.block.timestamp or expires_at > intent.expires_at:
@@ -91,8 +91,11 @@ class IntentFirewall(gl.Contract):
 
     @gl.public.write
     def request_action(self, request_id: str, session_id: str, action: str, action_hash: str, target: Address, declared_risk: u256) -> None:
+        if request_id == "" or request_id in self.actions:
+            raise gl.UserError(f"{ERROR_EXPECTED} invalid or duplicate request")
+        if session_id not in self.sessions:
+            raise gl.UserError(f"{ERROR_EXPECTED} unknown session")
         session = self.sessions[session_id]
-        self._require_new(self.actions[request_id].request_id, request_id)
         if session.session_id == "" or not session.active or session.agent != gl.message.sender_account:
             raise gl.UserError(f"{ERROR_EXPECTED} unauthorized agent session")
         if session.expires_at <= gl.block.timestamp or action == "" or action_hash == "" or declared_risk > 100:
@@ -101,6 +104,8 @@ class IntentFirewall(gl.Contract):
 
     @gl.public.write
     def evaluate(self, request_id: str, context: str, certificate_ttl: u256) -> None:
+        if request_id not in self.actions:
+            raise gl.UserError(f"{ERROR_EXPECTED} unknown action")
         action = self.actions[request_id]
         session = self.sessions[action.session_id]
         intent = self.intents[session.intent_id]
@@ -148,6 +153,8 @@ class IntentFirewall(gl.Contract):
 
     @gl.public.write
     def consume_certificate(self, certificate_id: str, action_hash: str, target: Address) -> None:
+        if certificate_id not in self.certificates:
+            raise gl.UserError(f"{ERROR_EXPECTED} certificate unavailable")
         certificate = self.certificates[certificate_id]
         if certificate.certificate_id == "" or certificate.consumed:
             raise gl.UserError(f"{ERROR_EXPECTED} certificate unavailable")
@@ -161,14 +168,20 @@ class IntentFirewall(gl.Contract):
 
     @gl.public.view
     def get_intent(self, intent_id: str) -> dict:
+        if intent_id not in self.intents:
+            raise gl.UserError(f"{ERROR_EXPECTED} unknown intent")
         item = self.intents[intent_id]
         return {"intent_id": item.intent_id, "owner": item.owner, "statement": item.statement, "forbidden_actions": item.forbidden_actions, "risk_limit": item.risk_limit, "expires_at": item.expires_at, "active": item.active}
 
     @gl.public.view
     def get_action(self, request_id: str) -> dict:
+        if request_id not in self.actions:
+            raise gl.UserError(f"{ERROR_EXPECTED} unknown action")
         item = self.actions[request_id]
         return {"request_id": item.request_id, "session_id": item.session_id, "agent": item.agent, "action_hash": item.action_hash, "target": item.target, "declared_risk": item.declared_risk, "status": item.status, "proof_root": item.proof_root}
 
     @gl.public.view
     def get_proof(self, request_id: str) -> str:
+        if request_id not in self.proofs:
+            raise gl.UserError(f"{ERROR_EXPECTED} unknown proof")
         return self.proofs[request_id]

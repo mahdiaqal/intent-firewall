@@ -2,12 +2,17 @@
 
 import hashlib
 import json
+from datetime import datetime
 from dataclasses import dataclass
 from genlayer import *
 
 PENDING, ALLOWED, BLOCKED, CONSUMED = ("PENDING", "ALLOWED", "BLOCKED", "CONSUMED")
 ERROR_EXPECTED = "[EXPECTED]"
 ERROR_LLM = "[LLM_ERROR]"
+
+
+def _now() -> int:
+    return int(datetime.fromisoformat(gl.message_raw["datetime"]).timestamp())
 
 
 @allow_storage
@@ -72,9 +77,9 @@ class IntentFirewall(gl.Contract):
     def register_intent(self, intent_id: str, statement: str, forbidden_actions: str, risk_limit: u256, expires_at: u256) -> None:
         if intent_id == "" or intent_id in self.intents:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid or duplicate intent")
-        if statement == "" or risk_limit > 100 or expires_at <= gl.block.timestamp:
+        if statement == "" or risk_limit > 100 or expires_at <= _now():
             raise gl.UserError(f"{ERROR_EXPECTED} invalid intent policy")
-        self.intents[intent_id] = Intent(intent_id, gl.message.sender_account, statement, forbidden_actions, risk_limit, expires_at, True)
+        self.intents[intent_id] = Intent(intent_id, gl.message.sender_address, statement, forbidden_actions, risk_limit, expires_at, True)
 
     @gl.public.write
     def open_session(self, session_id: str, intent_id: str, agent: Address, expires_at: u256) -> None:
@@ -83,9 +88,9 @@ class IntentFirewall(gl.Contract):
         if intent_id not in self.intents:
             raise gl.UserError(f"{ERROR_EXPECTED} unknown intent")
         intent = self.intents[intent_id]
-        if intent.intent_id == "" or not intent.active or gl.message.sender_account != intent.owner:
+        if intent.intent_id == "" or not intent.active or gl.message.sender_address != intent.owner:
             raise gl.UserError(f"{ERROR_EXPECTED} unauthorized intent owner")
-        if expires_at <= gl.block.timestamp or expires_at > intent.expires_at:
+        if expires_at <= _now() or expires_at > intent.expires_at:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid session expiration")
         self.sessions[session_id] = Session(session_id, intent_id, agent, expires_at, True)
 
@@ -96,11 +101,11 @@ class IntentFirewall(gl.Contract):
         if session_id not in self.sessions:
             raise gl.UserError(f"{ERROR_EXPECTED} unknown session")
         session = self.sessions[session_id]
-        if session.session_id == "" or not session.active or session.agent != gl.message.sender_account:
+        if session.session_id == "" or not session.active or session.agent != gl.message.sender_address:
             raise gl.UserError(f"{ERROR_EXPECTED} unauthorized agent session")
-        if session.expires_at <= gl.block.timestamp or action == "" or action_hash == "" or declared_risk > 100:
+        if session.expires_at <= _now() or action == "" or action_hash == "" or declared_risk > 100:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid or expired action")
-        self.actions[request_id] = Action(request_id, session_id, gl.message.sender_account, action, action_hash, target, declared_risk, PENDING, "")
+        self.actions[request_id] = Action(request_id, session_id, gl.message.sender_address, action, action_hash, target, declared_risk, PENDING, "")
 
     @gl.public.write
     def evaluate(self, request_id: str, context: str, certificate_ttl: u256) -> None:
@@ -111,7 +116,7 @@ class IntentFirewall(gl.Contract):
         intent = self.intents[session.intent_id]
         if action.request_id == "" or action.status != PENDING:
             raise gl.UserError(f"{ERROR_EXPECTED} action not pending")
-        if context == "" or certificate_ttl == 0 or session.expires_at <= gl.block.timestamp or intent.expires_at <= gl.block.timestamp:
+        if context == "" or certificate_ttl == 0 or session.expires_at <= _now() or intent.expires_at <= _now():
             raise gl.UserError(f"{ERROR_EXPECTED} invalid evaluation context")
 
         prompt = (
@@ -146,7 +151,7 @@ class IntentFirewall(gl.Contract):
         action.status, action.proof_root = (ALLOWED if allowed else BLOCKED), root
         self.actions[request_id] = action
         if allowed:
-            expires_at = gl.block.timestamp + certificate_ttl
+            expires_at = _now() + certificate_ttl
             if expires_at > session.expires_at:
                 expires_at = session.expires_at
             self.certificates[certificate_id] = Certificate(certificate_id, request_id, action.action_hash, action.agent, action.target, expires_at, False)
@@ -158,7 +163,7 @@ class IntentFirewall(gl.Contract):
         certificate = self.certificates[certificate_id]
         if certificate.certificate_id == "" or certificate.consumed:
             raise gl.UserError(f"{ERROR_EXPECTED} certificate unavailable")
-        if certificate.expires_at <= gl.block.timestamp or certificate.action_hash != action_hash or certificate.target != target:
+        if certificate.expires_at <= _now() or certificate.action_hash != action_hash or certificate.target != target:
             raise gl.UserError(f"{ERROR_EXPECTED} certificate binding failed")
         certificate.consumed = True
         self.certificates[certificate_id] = certificate

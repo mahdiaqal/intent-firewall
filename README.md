@@ -14,11 +14,11 @@ IntentFirewall is a GenLayer consensus-controlled permission layer for autonomou
 genvm-lint check contracts/IntentFirewall.py
 ```
 
-## StudioNet deployment
+## Bradbury testnet deployment
 
 ```powershell
-genlayer network set studionet
+genlayer network set testnet-bradbury
 genlayer deploy --contract contracts/IntentFirewall.py
 ```
 
-StudioNet is gasless. Save the deployment transaction and contract address in `LIVE_PROOFS.md`; only record transactions whose receipt execution result succeeded.
+Bradbury requires a funded testnet account. The verified deployment and proof transactions are recorded in `LIVE_PROOFS.md`; every listed transaction finished with `FINISHED_WITH_RETURN`.

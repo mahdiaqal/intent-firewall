@@ -33,6 +33,7 @@ class Session:
     session_id: str
     intent_id: str
     agent: Address
+    evaluator: Address
     expires_at: u256
     active: bool
 
@@ -59,6 +60,7 @@ class Certificate:
     action_hash: str
     agent: Address
     target: Address
+    consumer: Address
     expires_at: u256
     consumed: bool
 
@@ -82,7 +84,7 @@ class IntentFirewall(gl.Contract):
         self.intents[intent_id] = Intent(intent_id, gl.message.sender_address, statement, forbidden_actions, risk_limit, expires_at, True)
 
     @gl.public.write
-    def open_session(self, session_id: str, intent_id: str, agent: Address, expires_at: u256) -> None:
+    def open_session(self, session_id: str, intent_id: str, agent: Address, evaluator: Address, expires_at: u256) -> None:
         if session_id == "" or session_id in self.sessions:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid or duplicate session")
         if intent_id not in self.intents:
@@ -92,10 +94,10 @@ class IntentFirewall(gl.Contract):
             raise gl.UserError(f"{ERROR_EXPECTED} unauthorized intent owner")
         if expires_at <= _now() or expires_at > intent.expires_at:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid session expiration")
-        self.sessions[session_id] = Session(session_id, intent_id, agent, expires_at, True)
+        self.sessions[session_id] = Session(session_id, intent_id, agent, evaluator, expires_at, True)
 
     @gl.public.write
-    def request_action(self, request_id: str, session_id: str, action: str, action_hash: str, target: Address, declared_risk: u256) -> None:
+    def request_action(self, request_id: str, session_id: str, action: str, target: Address, declared_risk: u256) -> None:
         if request_id == "" or request_id in self.actions:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid or duplicate request")
         if session_id not in self.sessions:
@@ -103,8 +105,10 @@ class IntentFirewall(gl.Contract):
         session = self.sessions[session_id]
         if session.session_id == "" or not session.active or session.agent != gl.message.sender_address:
             raise gl.UserError(f"{ERROR_EXPECTED} unauthorized agent session")
-        if session.expires_at <= _now() or action == "" or action_hash == "" or declared_risk > 100:
+        if session.expires_at <= _now() or action == "" or declared_risk > 100:
             raise gl.UserError(f"{ERROR_EXPECTED} invalid or expired action")
+        payload = json.dumps({"action": action, "declared_risk": int(declared_risk), "target": str(target)}, sort_keys=True, separators=(",", ":"))
+        action_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         self.actions[request_id] = Action(request_id, session_id, gl.message.sender_address, action, action_hash, target, declared_risk, PENDING, "")
 
     @gl.public.write
@@ -114,6 +118,8 @@ class IntentFirewall(gl.Contract):
         action = self.actions[request_id]
         session = self.sessions[action.session_id]
         intent = self.intents[session.intent_id]
+        if gl.message.sender_address != session.evaluator:
+            raise gl.UserError(f"{ERROR_EXPECTED} unauthorized evaluator")
         if action.request_id == "" or action.status != PENDING:
             raise gl.UserError(f"{ERROR_EXPECTED} action not pending")
         if context == "" or certificate_ttl == 0 or session.expires_at <= _now() or intent.expires_at <= _now():
@@ -125,6 +131,7 @@ class IntentFirewall(gl.Contract):
             "Return JSON only with boolean keys intent_alignment, constraints, risk, context, impact, authority. "
             "Intent: " + intent.statement + " Forbidden actions: " + intent.forbidden_actions +
             " Risk limit: " + str(intent.risk_limit) + " Proposed action: " + action.action +
+            " Bound target: " + str(action.target) + " Action hash: " + action.action_hash +
             " Declared risk: " + str(action.declared_risk) + " Context: " + context
         )
 
@@ -145,16 +152,17 @@ class IntentFirewall(gl.Contract):
         vector = gl.vm.run_nondet_unsafe(judge, validate)
         keys = ("intent_alignment", "constraints", "risk", "context", "impact", "authority")
         allowed = all(vector[key] for key in keys) and action.declared_risk <= intent.risk_limit
-        root = hashlib.sha256(json.dumps(vector, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        proof_packet = {"action_hash": action.action_hash, "context": context, "evaluator": str(session.evaluator), "request_id": request_id, "target": str(action.target), "vector": vector}
+        root = hashlib.sha256(json.dumps(proof_packet, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
         certificate_id = request_id + ":certificate"
-        self.proofs[request_id] = json.dumps({"request_id": request_id, "vector": vector, "proof_root": root, "allowed": allowed}, sort_keys=True)
+        self.proofs[request_id] = json.dumps({"request_id": request_id, "action_hash": action.action_hash, "target": str(action.target), "evaluator": str(session.evaluator), "context_hash": hashlib.sha256(context.encode("utf-8")).hexdigest(), "vector": vector, "proof_root": root, "allowed": allowed}, sort_keys=True)
         action.status, action.proof_root = (ALLOWED if allowed else BLOCKED), root
         self.actions[request_id] = action
         if allowed:
             expires_at = _now() + certificate_ttl
             if expires_at > session.expires_at:
                 expires_at = session.expires_at
-            self.certificates[certificate_id] = Certificate(certificate_id, request_id, action.action_hash, action.agent, action.target, expires_at, False)
+            self.certificates[certificate_id] = Certificate(certificate_id, request_id, action.action_hash, action.agent, action.target, action.agent, expires_at, False)
 
     @gl.public.write
     def consume_certificate(self, certificate_id: str, action_hash: str, target: Address) -> None:
@@ -165,6 +173,8 @@ class IntentFirewall(gl.Contract):
             raise gl.UserError(f"{ERROR_EXPECTED} certificate unavailable")
         if certificate.expires_at <= _now() or certificate.action_hash != action_hash or certificate.target != target:
             raise gl.UserError(f"{ERROR_EXPECTED} certificate binding failed")
+        if gl.message.sender_address != certificate.consumer:
+            raise gl.UserError(f"{ERROR_EXPECTED} unauthorized certificate consumer")
         certificate.consumed = True
         self.certificates[certificate_id] = certificate
         action = self.actions[certificate.request_id]

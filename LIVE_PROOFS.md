@@ -1,4 +1,20 @@
-# Live Bradbury proofs
+# Corrected StudioNet deployment (v2)
+
+- Contract: [`0x1DCf29A4b8f1A7D003343bC5187Bbd241D50d1e5`](https://explorer-studio.genlayer.com/address/0x1DCf29A4b8f1A7D003343bC5187Bbd241D50d1e5)
+- Deployment: [`0xb5b2ccd7...8ae66b`](https://explorer-studio.genlayer.com/tx/0xb5b2ccd7b9bd3c892fb42e6dc22961f3bd00f329c0e106d92da9711c978ae66b)
+- Intent registration: [`0x879da8d7...d6694a`](https://explorer-studio.genlayer.com/tx/0x879da8d7772a82f6cafef9f986d9b49a316f26c8b5e59d62605337c05dd6694a)
+- Evaluator-bound session: [`0x2cd35a5c...1e2964`](https://explorer-studio.genlayer.com/tx/0x2cd35a5ce8644ec9cdff9943b78e50a04f1c749ca18ab551586fd26e771e2964)
+- Canonical payload binding: [`0x522be2a6...15a56`](https://explorer-studio.genlayer.com/tx/0x522be2a6fb9b9bef1c7245fae60e04355020c1e4fbe903be00e12e791c715a56)
+- Authorized semantic evaluation: [`0xab77fc70...6214a`](https://explorer-studio.genlayer.com/tx/0xab77fc70ff0e45a819ab02f53168969cc2b278d7059fed55c1deae7c1666214a)
+- Principal-bound consumption: [`0x21eec21f...29203`](https://explorer-studio.genlayer.com/tx/0x21eec21fcea9c7a111dff092fd0a0726f26ced417bc36345661c5d2dffc29203)
+
+The contract derived action hash `9d2b386bcd35c9863badf9fe7402f76d9fe7668f537914f254e83e5d5dbfeddd` from the canonical action/target/risk payload. The designated evaluator committed context and validators agreed on all six authorization dimensions. The stored proof root is `80b16e8c6761cd201dca3a1aca8f7c8b492cdf0e8ac3d582f64dbd1ada1b8d51`. Consumption by the bound principal advanced the request to `CONSUMED`.
+
+## Superseded deployments
+
+The deployments below predate the v2 binding correction and are retained only as historical records. They are not evidence for the corrected source.
+
+### Bradbury
 
 - Contract: [`0xd7337aEd7DE763538b2f31fdfCdbdf5C59116853`](https://explorer-bradbury.genlayer.com/address/0xd7337aEd7DE763538b2f31fdfCdbdf5C59116853)
 - Deployment: [`0x2a515a24...c056b4`](https://explorer-bradbury.genlayer.com/tx/0x2a515a2467432bef8e2862deebd2935d923d41a0f725c8c985c775d795c056b4)
@@ -23,7 +39,7 @@ The consensus evaluation stored status `ALLOWED`, proof root `9021057d594d3591d1
 
 The certificate-consumption transaction advanced the action to `CONSUMED`. All five participating validators voted `AGREE` on that transition.
 
-## Live StudioNet proofs
+### StudioNet v1
 
 - Deployer: [`0xB1c5d4B99756B81aC67257E5Bbd2305aDc15a6a6`](https://explorer-studio.genlayer.com/address/0xB1c5d4B99756B81aC67257E5Bbd2305aDc15a6a6)
 - Contract: [`0x3fAF84FB7E6FC266f0798fF4F5E490bD1cd805c1`](https://explorer-studio.genlayer.com/address/0x3fAF84FB7E6FC266f0798fF4F5E490bD1cd805c1)

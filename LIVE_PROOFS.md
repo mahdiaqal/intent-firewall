@@ -1,4 +1,15 @@
-# Corrected StudioNet deployment (v2)
+# Corrected StudioNet deployment (v3)
+
+## Immutable evaluator-context binding
+
+- Contract: [`0xE815E0f95161976c92Cf9e3472B00Da6116007e8`](https://explorer-studio.genlayer.com/address/0xE815E0f95161976c92Cf9e3472B00Da6116007e8)
+- Deployment: [`0x0b96255c...7bdbb3`](https://explorer-studio.genlayer.com/tx/0x0b96255c352e1dd099e1a0e911f968e7b2a00b97d3dd976a8e61338bad7bdbb3)
+
+This corrected source introduces evaluator-only `commit_context`. The contract stores an immutable SHA-256 context commitment before evaluation, and `evaluate` rejects any context whose hash does not exactly match that commitment. The action hash remains contract-derived from the canonical `action`, `target`, and `declared_risk` payload; target, evaluator, and context commitment are bound into the consensus proof packet. Certificates remain bound to the requested action, target, and intended consumer and can be consumed once only by that consumer.
+
+The deployment transaction proves the matching corrected source is on StudioNet. Lifecycle calls are intentionally not represented as evidence until they are finalized against this v3 deployment.
+
+## Previous corrected deployment (v2)
 
 - Contract: [`0x1DCf29A4b8f1A7D003343bC5187Bbd241D50d1e5`](https://explorer-studio.genlayer.com/address/0x1DCf29A4b8f1A7D003343bC5187Bbd241D50d1e5)
 - Deployment: [`0xb5b2ccd7...8ae66b`](https://explorer-studio.genlayer.com/tx/0xb5b2ccd7b9bd3c892fb42e6dc22961f3bd00f329c0e106d92da9711c978ae66b)

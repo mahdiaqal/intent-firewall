@@ -4,10 +4,16 @@
 
 - Contract: [`0xE815E0f95161976c92Cf9e3472B00Da6116007e8`](https://explorer-studio.genlayer.com/address/0xE815E0f95161976c92Cf9e3472B00Da6116007e8)
 - Deployment: [`0x0b96255c...7bdbb3`](https://explorer-studio.genlayer.com/tx/0x0b96255c352e1dd099e1a0e911f968e7b2a00b97d3dd976a8e61338bad7bdbb3)
+- Intent registration: [`0x3ad223f7...a2052c`](https://explorer-studio.genlayer.com/tx/0x3ad223f7b2e59097fa28fb39daaeb57781909fdf8514bfe15d4947f374a2052c)
+- Evaluator-bound session: [`0x10accaa6...e0a142`](https://explorer-studio.genlayer.com/tx/0x10accaa6b757574324d0d86da40a71db831c9c5d8eb79f4acb637a86d7e0a142)
+- Agent action request: [`0x4ab4624e...638549`](https://explorer-studio.genlayer.com/tx/0x4ab4624ec9db2fffc974424a9a5dee46fc4461cc2d21e753aa505a74ab638549)
+- Evaluator context commitment: [`0x7240c152...de565f`](https://explorer-studio.genlayer.com/tx/0x7240c152d61adbb605c584bab6ae1916c69d796f6bd9c10f908e3164fede565f)
+- Consensus evaluation: [`0x8ea71db8...3018e8`](https://explorer-studio.genlayer.com/tx/0x8ea71db8c92c44afe3855d3cd608f9d9f29678b7bfb37a8c33ce19deb23018e8)
+- Principal-bound consumption: [`0x894d075c...08f53e`](https://explorer-studio.genlayer.com/tx/0x894d075c47ac77a61c77e4389aa5008937fd542f003d733e0ebae6623808f53e)
 
 This corrected source introduces evaluator-only `commit_context`. The contract stores an immutable SHA-256 context commitment before evaluation, and `evaluate` rejects any context whose hash does not exactly match that commitment. The action hash remains contract-derived from the canonical `action`, `target`, and `declared_risk` payload; target, evaluator, and context commitment are bound into the consensus proof packet. Certificates remain bound to the requested action, target, and intended consumer and can be consumed once only by that consumer.
 
-The deployment transaction proves the matching corrected source is on StudioNet. Lifecycle calls are intentionally not represented as evidence until they are finalized against this v3 deployment.
+The v3 lifecycle reached `CONSUMED`. The contract-derived action hash was `bf16220090be3719988c5e18d7cabb31c17f7d363f13e9530932d8b0fc727ad6`; the evaluator's immutable context commitment was `6d74c670b0e77176a45dae99a3cc7698315f432fa509fad20faad5123eed65be`; and consensus stored proof root `47fdcaa5365fa74c62ae7935466fcdf8138d43ab006bf26aad2c1052b96036de` before the bound agent consumed the certificate.
 
 ## Previous corrected deployment (v2)
 
